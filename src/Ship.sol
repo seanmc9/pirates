@@ -11,9 +11,13 @@ contract Ship is Ownable {
         WEST
     }
 
-    string public constant VERSION = "0.1.0";
+    string public constant VERSION = "0.1.1";
     uint256 public constant MAX_X_COORDINATE = 100;
     uint256 public constant MAX_Y_COORDINATE = 100;
+    uint256 public constant HARBOR_MIN_X_COORDINATE = 80;
+    uint256 public constant HARBOR_MAX_X_COORDINATE = 85;
+    uint256 public constant HARBOR_MIN_Y_COORDINATE = 80;
+    uint256 public constant HARBOR_MAX_Y_COORDINATE = 85;
 
     uint256 public immutable initXCoordinate;
     uint256 public immutable initYCoordinate;
@@ -34,6 +38,7 @@ contract Ship is Ownable {
     error TargetMustBeNextToYouInFiringDirection(
         CARDINAL_DIRECTIONS direction, uint256 currentRelevantCoordinate, uint256 targetsCurrentRelevantCoordinate
     );
+    error TargetIsSafeFromAttack();
 
     constructor(uint256 initXCoordinate_, uint256 initYCoordinate_, CARDINAL_DIRECTIONS initFacing_)
         Ownable(msg.sender)
@@ -41,6 +46,13 @@ contract Ship is Ownable {
         initXCoordinate = initXCoordinate_;
         initYCoordinate = initYCoordinate_;
         initFacing = initFacing_;
+    }
+
+    function isSafe() public view returns (bool) {
+        return (
+            ((currentXCoordinate >= HARBOR_MIN_X_COORDINATE) && (currentXCoordinate >= HARBOR_MAX_X_COORDINATE))
+                && ((currentYCoordinate >= HARBOR_MIN_Y_COORDINATE) && (currentYCoordinate >= HARBOR_MAX_Y_COORDINATE))
+        );
     }
 
     function pivot(CARDINAL_DIRECTIONS direction) public onlyOwner {
@@ -109,6 +121,7 @@ contract Ship is Ownable {
 
     function hit() external {
         if (address(msg.sender).codehash != address(this).codehash) revert AttackerDoesNotHaveIdenticalBytecode();
+        if (isSafe()) revert TargetIsSafeFromAttack();
         numberOfTimesHit++;
     }
 }
