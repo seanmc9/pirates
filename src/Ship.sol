@@ -11,13 +11,16 @@ contract Ship is Ownable {
         WEST
     }
 
-    string public constant VERSION = "0.1.1";
+    string public constant VERSION = "0.1.2";
     uint256 public constant MAX_X_COORDINATE = 100;
     uint256 public constant MAX_Y_COORDINATE = 100;
     uint256 public constant HARBOR_MIN_X_COORDINATE = 80;
     uint256 public constant HARBOR_MAX_X_COORDINATE = 85;
     uint256 public constant HARBOR_MIN_Y_COORDINATE = 80;
     uint256 public constant HARBOR_MAX_Y_COORDINATE = 85;
+    uint256 public constant TREASURE_X_COORDINATE = 42;
+    uint256 public constant TREASURE_Y_COORDINATE = 69;
+    uint256 public constant ALLOWED_TREASURE_CLAIM_FREQUENCY = 1 days;
 
     uint256 public immutable initXCoordinate;
     uint256 public immutable initYCoordinate;
@@ -26,9 +29,11 @@ contract Ship is Ownable {
     CARDINAL_DIRECTIONS public currentlyFacing;
     uint256 public currentXCoordinate;
     uint256 public currentYCoordinate;
+    uint256 public lastClaimedTreasureTimestamp;
 
     uint256 public numberOfTimesHit;
     uint256 public numberOfHitsDealt;
+    uint256 public treasureAmt;
 
     error AttackerDoesNotHaveIdenticalBytecode();
     error CannotGoAnyFurtherOnXAxis();
@@ -39,6 +44,8 @@ contract Ship is Ownable {
         CARDINAL_DIRECTIONS direction, uint256 currentRelevantCoordinate, uint256 targetsCurrentRelevantCoordinate
     );
     error TargetIsSafeFromAttack();
+    error MustBeAtTreasureToLoot();
+    error MustWaitUntilNextClaim(uint256 secondsToWait);
 
     constructor(uint256 initXCoordinate_, uint256 initYCoordinate_, CARDINAL_DIRECTIONS initFacing_)
         Ownable(msg.sender)
@@ -73,6 +80,20 @@ contract Ship is Ownable {
             if (currentXCoordinate == 0) revert CannotGoAnyFurtherOnYAxis();
             currentXCoordinate--;
         }
+    }
+
+    function lootTreasure() public onlyOwner {
+        if ((currentXCoordinate != TREASURE_X_COORDINATE) && (currentYCoordinate != TREASURE_Y_COORDINATE)) {
+            revert MustBeAtTreasureToLoot();
+        }
+        if (block.timestamp - ALLOWED_TREASURE_CLAIM_FREQUENCY < lastClaimedTreasureTimestamp) {
+            revert MustWaitUntilNextClaim(
+                lastClaimedTreasureTimestamp - (block.timestamp - ALLOWED_TREASURE_CLAIM_FREQUENCY)
+            );
+        }
+
+        treasureAmt++;
+        lastClaimedTreasureTimestamp = block.timestamp;
     }
 
     function fire(CARDINAL_DIRECTIONS direction, Ship target) public onlyOwner {
